@@ -1,8 +1,10 @@
+use std::any::Any;
 use crate::bridged_type::{BridgeableType, BridgedType, TypePosition};
 use crate::TypeDeclarations;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::Path;
+use syn::spanned::Spanned;
 
 /// Rust: Result<T, E>
 /// Swift: RustResult<T, E>
@@ -21,16 +23,34 @@ pub(crate) struct BuiltInResult {
 
 impl BuiltInResult {
     pub(super) fn to_ffi_compatible_rust_type(&self, swift_bridge_path: &Path) -> TokenStream {
-        // TODO: Choose the kind of Result representation based on whether or not the ok and error
+        let ok = self.ok_ty.to_ffi_compatible_rust_type(swift_bridge_path);
+        let err = self.err_ty.to_ffi_compatible_rust_type(swift_bridge_path);
+
+        println!("### ok: {}, err: {}", ok.to_string(), err.to_string());
+        let type_name = syn::Ident::new(
+            &format!("Result{}{}", "u8", "u8"),
+            swift_bridge_path.span()
+        );
+
+        let wanted = "";
+
+        // let wanted = quote! {
+        //     #swift_bridge_path::result::#type_name
+        // };
+
         //  types are primitives.
         //  See `swift-bridge/src/std_bridge/result`
         let result_kind = quote! {
             ResultPtrAndPtr
         };
 
-        quote! {
+        let s = quote! {
             #swift_bridge_path::result::#result_kind
-        }
+        };
+
+        println!("--> {} | vs | {}", s.to_string(), wanted.to_string());
+
+        s
     }
 
     pub(super) fn convert_ffi_value_to_rust_value(
@@ -88,17 +108,43 @@ impl BuiltInResult {
             .err_ty
             .convert_swift_expression_to_ffi_type("err", type_pos);
 
+        let type_name = format!("__private__Result{}And{}", self.ok_ty.to_c_type(), self.err_ty.to_c_type());
+
         format!(
-            "{{ switch {val} {{ case .Ok(let ok): return __private__ResultPtrAndPtr(is_ok: true, ok_or_err: {convert_ok}) case .Err(let err): return __private__ResultPtrAndPtr(is_ok: false, ok_or_err: {convert_err}) }} }}()",
+            "{{ switch {val} {{ case .Ok(let ok): return {type_name}(is_ok: true, ok_or_err: {convert_ok}) case .Err(let err): return {type_name}(is_ok: false, ok_or_err: {convert_err}) }} }}()",
             val = expression
         )
     }
 
-    pub fn to_c(&self) -> &'static str {
-        // TODO: Choose the kind of Result representation based on whether or not the ok and error
-        //  types are primitives.
-        //  See `swift-bridge/src/std_bridge/result`
-        "struct __private__ResultPtrAndPtr"
+    pub(super) fn convert_rust_expression_to_ffi_type(
+        &self,
+        expression: &TokenStream,
+        swift_bridge_path: &Path,
+    ) -> TokenStream {
+        let path = self.to_rust_type_path();
+
+        let ok = self.ok_ty.to_rust_type_path();
+        let err = self.err_ty.to_rust_type_path();
+
+        let type_name = syn::Ident::new(
+            &format!("Result{}{}", quote!(#ok), quote!(#err)),
+            path.span()
+        );
+
+        let s = quote! {
+            match #expression {
+                Ok(val) => #swift_bridge_path::result::<#type_name>::Ok(val),
+                Err(err) => #swift_bridge_path::result::<#type_name>::Err(err)
+            }
+        };
+
+        println!("---> {}", s);
+
+        s
+    }
+
+    pub fn to_c(&self) -> String {
+        format!("struct __private__Result{}And{}", self.ok_ty.to_c_type(), self.err_ty.to_c_type())
     }
 }
 

@@ -1224,8 +1224,8 @@ impl BridgedType {
                 StdLibType::Option(opt) => {
                     opt.convert_rust_expression_to_ffi_type(expression, swift_bridge_path)
                 }
-                StdLibType::Result(_) => {
-                    todo!("Result<T, E> is not yet supported")
+                StdLibType::Result(built_in) => {
+                    built_in.convert_rust_expression_to_ffi_type(expression, swift_bridge_path)
                 }
                 StdLibType::BoxedFnOnce(fn_once) => {
                     fn_once.convert_rust_value_to_ffi_compatible_value(expression)
@@ -1390,8 +1390,9 @@ impl BridgedType {
                     format!("RustVec(ptr: {})", expression)
                 }
                 StdLibType::Option(opt) => opt.convert_ffi_expression_to_swift_type(expression),
-                StdLibType::Result(_) => {
-                    todo!("Result<T, E> is not yet supported")
+                StdLibType::Result(built_in) => {
+                    // FIXME: is this right?
+                    built_in.to_swift_type(type_pos, types)
                 }
                 StdLibType::BoxedFnOnce(fn_once) => {
                     fn_once.convert_ffi_value_to_swift_value(type_pos)
