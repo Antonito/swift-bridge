@@ -8,6 +8,17 @@ import XCTest
 @testable import SwiftRustIntegrationTestRunner
 
 class ResultTests: XCTestCase {
+    func testRustReturnsResultU8() throws {
+        XCTAssertEqual(rust_return_u8_u8_ok(), .success(1));
+        XCTAssertEqual(rust_return_u8_u8_err(), .failure(2));
+    }
+
+    /// Verify that we can pass a Result<String, String> from Swift -> Rust
+    func testSwiftCallRustResultString() throws {
+        rust_func_takes_result_string(.Ok("Success Message"))
+        rust_func_takes_result_string(.Err("Error Message"))
+    }
+
     /// Verify that we can pass a Result<String, String> from Swift -> Rust
     func testSwiftCallRustResultString() throws {
         rust_func_takes_result_string(.Ok("Success Message"))

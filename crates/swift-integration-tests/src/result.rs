@@ -3,6 +3,8 @@
 #[swift_bridge::bridge]
 mod ffi {
     extern "Rust" {
+        fn rust_return_u8_u8_ok() -> Result<u8, u8>;
+        fn rust_return_u8_u8_err() -> Result<u8, u8>;
         fn rust_func_takes_result_string(arg: Result<String, String>);
         fn rust_func_takes_result_opaque_rust(
             arg: Result<ResultTestOpaqueRustType, ResultTestOpaqueRustType>,
@@ -24,6 +26,14 @@ mod ffi {
 
         fn val(&self) -> u32;
     }
+}
+
+fn rust_return_u8_u8_ok() -> Result<u8, u8> {
+    Ok(1u8)
+}
+
+fn rust_return_u8_u8_err() -> Result<u8, u8> {
+    Err(2u8)
 }
 
 fn rust_func_takes_result_string(arg: Result<String, String>) {
